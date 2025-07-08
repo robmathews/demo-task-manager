@@ -1,42 +1,46 @@
-name: Deploy to AWS
+name: Deploy Application
 
 on:
   push:
     branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    environment: development
-    
+
     steps:
     - uses: actions/checkout@v3
-    
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v1
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ secrets.AWS_REGION }}
-    
+
     - name: Setup Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: '18'
-    
-    - name: Install dependencies
-      run: npm ci
-    
-    - name: Run tests
-      run: npm test
-    
-    - name: Deploy to AWS
+        node-version: '16.x'
+
+    - name: Install Backend Dependencies
       run: |
-        aws configure set region ${{ secrets.AWS_REGION }}
-        # Using existing VPC and security group from discovery
-        aws ec2 run-instances \
-          --image-id ami-0c02fb55956c7d316 \
-          --instance-type t2.micro \
-          --subnet-id subnet-0a3254794f6c6cf1e \
-          --security-group-ids sg-07d9be21e03239e44 \
-          --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=demo-task-manager-dev}]'
+        cd backend
+        npm ci
+
+    - name: Install Frontend Dependencies
+      run: |
+        cd frontend
+        npm ci
+
+    - name: Build Backend
+      run: |
+        cd backend
+        npm run build
+
+    - name: Build Frontend
+      run: |
+        cd frontend
+        npm run build
+
+    - name: Run Tests
+      run: |
+        cd backend
+        npm test
+        cd ../frontend
+        npm test
